@@ -62,11 +62,15 @@ module.exports = function (app) {
   app.route('/api/books/:id')
     .get(async function (req, res){
       const bookid = req.params.id;
-      //json res format: {"_id": bookid, "title": book_title, "comments": [comment,comment,...]}
-      const book = await Book.findById(bookid)
-      if (book) {
-        res.json(book)
-      } else {
+      try {
+        const book = await Book.findById(bookid)
+        //json res format: {"_id": bookid, "title": book_title, "comments": [comment,comment,...]}
+        res.json({
+          _id: book._id,
+          title: book.title,
+          comments: book.comments
+        })
+      } catch (err) {
         res.json('no book exists')
       }
     })
@@ -77,12 +81,16 @@ module.exports = function (app) {
       if (!comment) {
         res.json('missing required field comment')
       } else {
-        const comments = await Book.findById(bookid, { comments: 1 })
-        if (comments) {
-          const updatedBook = await Book.findByIdAndUpdate(bookid, { comments: [...comments.comments, comment] }, { returnDocument: 'after' })
-          //json res format same as .get
-          res.json(updatedBook)
-        } else {
+        try {
+          const updatedBook = await Book.findById(bookid)
+          updatedBook.comments.push(comment)
+          await updatedBook.save()
+          res.json({
+            _id: updatedBook._id,
+            title: updatedBook.title,
+            comments: updatedBook.comments
+          })
+        } catch (err) {
           res.json('no book exists')
         }
       }
@@ -90,11 +98,15 @@ module.exports = function (app) {
     
     .delete(async function (req, res){
       const bookid = req.params.id;
-      const deletedBook = await Book.findByIdAndDelete(bookid)
-      if (deletedBook) {
-        //if successful response will be 'delete successful'
-        res.json('delete successful')
-      } else {
+      try {
+        const deletedBook = await Book.findByIdAndDelete(bookid)
+        if (!deletedBook) {
+          res.json('no book exists')
+        } else {
+          //if successful response will be 'delete successful'
+          res.json('delete successful')
+        }
+      } catch (err) {
         res.json('no book exists')
       }
     });
